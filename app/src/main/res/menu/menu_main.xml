@@ -5,7 +5,7 @@
     <item android:id="@+id/main"
         android:title="跳转: 主页"
         android:orderInCategory="1"
-        app:showAsAction="never"/>
+        app:showAsAction="never" />
     <item android:id="@+id/announce"
         android:title="跳转: 公告"
         android:orderInCategory="2"

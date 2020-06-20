@@ -1,5 +1,6 @@
 package net.lawaxi.android.hcbbs;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.ImageDecoder;
 import android.net.Uri;
@@ -9,10 +10,14 @@ import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
+import android.os.Looper;
 import android.util.JsonReader;
+import android.util.LogPrinter;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -21,8 +26,16 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.ImageView;
 
+import net.lawaxi.android.hcbbs.api.httprequest;
+
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -30,10 +43,13 @@ public class MainActivity extends AppCompatActivity {
     //public static String mypage = "http://www.lawaxi.net/";
     public static WebView web;
     public static FloatingActionButton fab;
+    public static MainActivity instance;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        instance = this;
 
         setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
@@ -46,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
         web.getSettings().setDatabaseEnabled(true);
         web.loadUrl("http://www.lawaxi.net/");
 
-        fab = findViewById(R.id.fab);
+        fab = findViewById(R.id.share);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -54,6 +70,23 @@ public class MainActivity extends AppCompatActivity {
                 textIntent.setType("text/plain");
                 textIntent.putExtra(Intent.EXTRA_TEXT, web.getUrl());
                 startActivity(Intent.createChooser(textIntent, "分享本页面"));
+            }
+        });
+        fab.setOnTouchListener(new View.OnTouchListener() {
+
+            private float recordx;
+            private float recordy;
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                if(event.getAction()==MotionEvent.ACTION_DOWN){
+                    recordx = event.getX();
+                    recordy = event.getY();
+                }else{
+                    fab.offsetLeftAndRight((int)(event.getX()-recordx));
+                    fab.offsetTopAndBottom((int)(event.getY()-recordy));
+                }
+                return true;
             }
         });
 
@@ -87,6 +120,66 @@ public class MainActivity extends AppCompatActivity {
                         .setAction("提示", null).show();
             }
         });*/
+
+        final ArrayList<String> ret = new ArrayList<>();
+        Thread a = new Thread(new Runnable(){
+            @Override
+            public void run() {
+                try {
+                    String latest_version = httprequest.testGetHtml("http://121.37.27.192/data/hcapp.html");
+                    System.out.println(latest_version);
+
+                    if(latest_version.equals(""))
+                        return;
+
+                    if(latest_version.startsWith("beta-")){
+                        if (!BuildConfig.VERSION_NAME.startsWith("beta-"))
+                            return ;
+
+                        if (Integer.valueOf(latest_version.substring(5)) <= Integer.valueOf(BuildConfig.VERSION_NAME.substring(5))) {
+                            return;
+                        }
+                    }else{
+                        if (!BuildConfig.VERSION_NAME.startsWith("beta-")) {
+                            if (Integer.valueOf(latest_version) <= Integer.valueOf(BuildConfig.VERSION_NAME)) {
+                                return;
+                            }
+                        }
+                    }
+
+                    ret.add(latest_version) ;
+                    ret.add(httprequest.testGetHtml("http://121.37.27.192/data/hcappc.html"));
+
+                }catch (Exception e){
+
+                    e.printStackTrace();
+                }
+            }
+        });
+        try {
+            a.start();
+            a.join();
+
+            if(ret.size()==2){
+                new AlertDialog.Builder(instance)
+                        .setTitle("由 "+BuildConfig.VERSION_NAME+" 更新至 "+ret.get(0))
+                        .setMessage("更新介绍: " +ret.get(1))
+                        .setPositiveButton("是", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                web.loadUrl("https://github.com/Lawaxi/hexagon-android/releases");
+                            }
+                        })
+                        .setNegativeButton("否", null)
+                        .show();
+            }
+
+
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+
     }
 
     /*
@@ -152,6 +245,7 @@ public class MainActivity extends AppCompatActivity {
 
             case R.id.page3:
                 web.loadUrl("http://www.lawaxi.net/t/science");
+                return true;
 
             case R.id.page4:
                 web.loadUrl("http://www.lawaxi.net/t/xijinpings");

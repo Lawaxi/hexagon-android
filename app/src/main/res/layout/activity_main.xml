@@ -23,7 +23,7 @@
     </com.google.android.material.appbar.AppBarLayout>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab"
+        android:id="@+id/share"
         android:layout_width="wrap_content"
         android:layout_height="50dp"
         android:layout_gravity="bottom|end"
